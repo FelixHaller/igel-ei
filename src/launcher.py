@@ -21,11 +21,15 @@
 #  MA 02110-1301, USA.
 #  
 #  
-import sys, time, threading, os
+import sys, time, threading, os, dbus
+import dbus.service
+from dbus.mainloop.qt import DBusQtMainLoop
+from dbus.mainloop.glib import DBusGMainLoop
 from PyQt5 import QtGui, QtWidgets, QtCore
 from core import Core
 
-MIN_INPUT_LENGTH = 0
+MIN_INPUT_LENGTH = 3
+
 
 class Launcher(QtWidgets.QMainWindow):
 	def __init__(self, parent=None):
@@ -35,25 +39,36 @@ class Launcher(QtWidgets.QMainWindow):
 		self.core.start()
 		self.liste = []
 		centralWidget = QtWidgets.QWidget(parent=self)
+		
+		self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+		
+		#self.setWindowFlags( flags |  QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.X11BypassWindowManagerHint)
+		
+		self.setStyleSheet("background-color: rgba(45, 45, 45, 75%); color: #dedede;")
+		
+		self.setFocusPolicy(QtCore.Qt.StrongFocus)
+		
 		self.setCentralWidget(centralWidget)
 		layout = QtWidgets.QVBoxLayout()
-		self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+		self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
 		self.inputLine = QtWidgets.QLineEdit()
 		self.inputLine.textChanged.connect(self.inputHandler)
-		self.centerOnScreen()
+		self._centerOnScreen()
 		self.inputLine.setGeometry(0,0,self.width(),25)
 		self.resultWidget = QtWidgets.QListWidget()
+		self.resultWidget.setStyleSheet("selection-background-color: #d64937;")
 		layout.addWidget(self.inputLine)
 		layout.addWidget(self.resultWidget)
 		centralWidget.setLayout(layout)
 	def inputHandler(self):
 		self.resultWidget.clear()
-		if len(self.inputLine.text()) > MIN_INPUT_LENGTH:
+		if len(self.inputLine.text()) >= MIN_INPUT_LENGTH:
 			for entry in self.core.searchApp(self.inputLine.text()):
 				icon = QtGui.QIcon(entry.icon)
 				item = QtWidgets.QListWidgetItem(icon,entry.name)
 				self.resultWidget.addItem(item)
-	def centerOnScreen (self):
+			
+	def _centerOnScreen (self):
 		'''Centers the window on the screen.'''
 		resolution = QtWidgets.QDesktopWidget().screenGeometry()
 		self.setGeometry(0,0,resolution.width() / 2,resolution.height()/3)
@@ -63,7 +78,7 @@ class Launcher(QtWidgets.QMainWindow):
 	def keyPressEvent(self, e):
 		if e.key() == QtCore.Qt.Key_Escape:
 			if self.inputLine.text() == "":
-				self.close()
+				self.hide()
 			else:
 				self.inputLine.setText("")
 				self.inputLine.setFocus(True)
@@ -77,7 +92,6 @@ class Launcher(QtWidgets.QMainWindow):
 				self.inputLine.setCursorPosition(len(self.inputLine.text()))
 				self.resultWidget.item(0).setSelected(False)
 		elif e.key() == QtCore.Qt.Key_Backspace:
-			#self.inputLine.setText("")
 			self.inputLine.setFocus(True)
 			self.inputLine.setCursorPosition(len(self.inputLine.text()))
 			self.resultWidget.item(0).setSelected(False)
@@ -86,9 +100,55 @@ class Launcher(QtWidgets.QMainWindow):
 				self.core.launchApp(0)
 			elif not self.inputLine.hasFocus() and self.resultWidget.count() > 0:
 				self.core.launchApp(self.resultWidget.currentRow())
+
+class DBusTrayMainWindowObject(dbus.service.Object):
+	"""DBus wrapper object for the mainwindow."""
+
+	def __init__(self, mainwindow, bus):
+		"""Creates a new service object. `mainwindow` specifies the window,
+		which is to be exposed through this service object. `bus` is the
+		DBus bus, at which this object is registered."""
+		# register this object on the given bus
+		dbus.service.Object.__init__(self, bus,
+									 # the dbus object path
+									 '/org/pygmy/MainWindow')
+		self.mainwindow = mainwindow
+
+	
+	@dbus.service.method(dbus_interface='org.pygmy.launcher')
+	def show(self):
+		
+		self.mainwindow.inputLine.setFocus(True)
+		self.mainwindow.activateWindow()
+		self.mainwindow.setEnabled(True)
+		self.mainwindow.focusWidget()
+		self.mainwindow.show()
+		
+
 if __name__ == "__main__":
 	app = QtWidgets.QApplication(sys.argv)
-	myapp = Launcher()
-	myapp.show()
-	sys.exit(app.exec_())
-
+	
+	bus = dbus.SessionBus(mainloop=DBusGMainLoop())
+	
+	try:
+		launcher = bus.get_object("org.pygmy.launcher","/org/pygmy/MainWindow")
+		
+	except dbus.DBusException:
+		# the application is not running, so the service is registered and
+		# the window created
+		name = dbus.service.BusName("org.pygmy.launcher", bus)
+		launcher = Launcher()
+		# register the service object for the main window
+		mainwindowobject = DBusTrayMainWindowObject(launcher, bus)
+		# show the window and get the message loop running
+		launcher.show()
+		app.exec_()
+	else:
+		# the try clause completed, the application must therefore be
+		# running.  Now the mainwindow is shown and activated.
+		launcher.show()
+		
+		
+		
+		
+	

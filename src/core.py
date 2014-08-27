@@ -1,4 +1,4 @@
-import sys, subprocess
+import os,glob,sys, subprocess
 import xdg.Menu
 import xdg.DesktopEntry
 import xdg.IconTheme
@@ -11,24 +11,30 @@ class Core(QtCore.QThread):
 		self.allApps = {}
 		self.results = []
 		self.gui = gui
-		
+		self.paths=(	"/usr/share/applications/",
+						os.path.expanduser("~/.local/share/applications/"),
+						os.path.expanduser("~/Desktop/")
+					)
 	def run(self):
-		self.buildDict(xdg.Menu.parse())
-	def buildDict(self, menu):
-		for entry in menu.getEntries():
-			if isinstance(entry, xdg.Menu.Menu):
-				self.buildDict(entry)
-			elif isinstance(entry, xdg.Menu.MenuEntry):
-				icon = xdg.IconTheme.getIconPath(entry.DesktopEntry.getIcon())
-				if icon is None:
-					icon = xdg.IconTheme.getIconPath("applications-other")
-				app = App(entry.DesktopEntry.getName(),icon,entry.DesktopEntry.getExec())
-				self.allApps[self.buildIndexString(entry)] = app
-				
-				
-	
+		for path in self.paths:			
+			for entry in glob.glob(path+"/*.desktop"):
+				try:
+					a = self._getAppFromDesktopFile(entry)
+					icon = xdg.IconTheme.getIconPath(a.getIcon())
+					if icon is None:
+						icon = xdg.IconTheme.getIconPath("applications-other")
+					app = App(a.getName(),icon,a.getExec())
+					self.allApps[self.buildIndexString(a)] = app
+				except xdg.Exceptions.ParsingError:
+					print("Desktop-File: " + entry + " is corrupted")
+					pass
+		
+			
+	def _getAppFromDesktopFile(self, desktopFile):
+		return(xdg.DesktopEntry.DesktopEntry(desktopFile))
+		
 	def buildIndexString(self, entry):
-		indexString = entry.DesktopEntry.getName() + " " + entry.DesktopEntry.getGenericName() + " " + entry.DesktopEntry.getComment()
+		indexString = entry.getName() + " " + entry.getGenericName() + " " + entry.getComment()
 		return indexString
 		
 	def searchApp(self, query):
