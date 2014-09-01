@@ -46,9 +46,7 @@ class Core(QtCore.QThread):
 	def launchApp(self, appIndex):
 		app = self.results[appIndex]
 		print("starte: " + app.name)
-		#subprocess.Popen(['nohup', app.command.split(" ")[0]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		subprocess.Popen(app.command.split(" ")[0], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-		sys.exit(0)
 
 class App():
 	def __init__(self, name, icon, command):

@@ -38,28 +38,36 @@ class Launcher(QtWidgets.QMainWindow):
 		self.core = Core(self)
 		self.core.start()
 		self.liste = []
-		centralWidget = QtWidgets.QWidget(parent=self)
+		centralWidget = QtWidgets.QWidget(self)
 		
 		self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 		
-		#self.setWindowFlags( flags |  QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.X11BypassWindowManagerHint)
 		
 		self.setStyleSheet("background-color: rgba(45, 45, 45, 75%); color: #dedede;")
-		
-		self.setFocusPolicy(QtCore.Qt.StrongFocus)
 		
 		self.setCentralWidget(centralWidget)
 		layout = QtWidgets.QVBoxLayout()
 		self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
-		self.inputLine = QtWidgets.QLineEdit()
+		self.inputLine = QtWidgets.QLineEdit(centralWidget)
 		self.inputLine.textChanged.connect(self.inputHandler)
 		self._centerOnScreen()
+		
+		self.setFocusProxy(centralWidget)
+		centralWidget.setFocusProxy(self.inputLine)
+		
 		self.inputLine.setGeometry(0,0,self.width(),25)
 		self.resultWidget = QtWidgets.QListWidget()
 		self.resultWidget.setStyleSheet("selection-background-color: #d64937;")
 		layout.addWidget(self.inputLine)
 		layout.addWidget(self.resultWidget)
 		centralWidget.setLayout(layout)
+		
+	def showEvent(self, event):
+		print("show")
+		self.inputLine.setText("")
+		self.inputLine.setFocus(True)
+		self.inputLine.raise_()
+		
 	def inputHandler(self):
 		self.resultWidget.clear()
 		if len(self.inputLine.text()) >= MIN_INPUT_LENGTH:
@@ -97,10 +105,13 @@ class Launcher(QtWidgets.QMainWindow):
 			self.resultWidget.item(0).setSelected(False)
 		elif e.key() == QtCore.Qt.Key_Enter or e.key() == QtCore.Qt.Key_Return:
 			if self.inputLine.hasFocus() and self.resultWidget.count() > 0:
+				self.hide()
 				self.core.launchApp(0)
 			elif not self.inputLine.hasFocus() and self.resultWidget.count() > 0:
+				self.hide()
 				self.core.launchApp(self.resultWidget.currentRow())
 
+	
 class DBusTrayMainWindowObject(dbus.service.Object):
 	"""DBus wrapper object for the mainwindow."""
 
@@ -117,26 +128,21 @@ class DBusTrayMainWindowObject(dbus.service.Object):
 	
 	@dbus.service.method(dbus_interface='org.pygmy.launcher')
 	def show(self):
-		
-		self.mainwindow.inputLine.setFocus(True)
-		self.mainwindow.activateWindow()
-		self.mainwindow.setEnabled(True)
-		self.mainwindow.focusWidget()
 		self.mainwindow.show()
+		self.mainwindow.activateWindow()
 		
-
 if __name__ == "__main__":
-	app = QtWidgets.QApplication(sys.argv)
-	
 	bus = dbus.SessionBus(mainloop=DBusGMainLoop())
 	
 	try:
 		launcher = bus.get_object("org.pygmy.launcher","/org/pygmy/MainWindow")
 		
 	except dbus.DBusException:
+		
 		# the application is not running, so the service is registered and
 		# the window created
 		name = dbus.service.BusName("org.pygmy.launcher", bus)
+		app = QtWidgets.QApplication(sys.argv)
 		launcher = Launcher()
 		# register the service object for the main window
 		mainwindowobject = DBusTrayMainWindowObject(launcher, bus)
