@@ -2,25 +2,25 @@
 # -*- coding: utf-8 -*-
 #
 #  launcher.py
-#  
+#
 #  Copyright 2014 Felix Haller <ich@ein-freier-mensch.de>
-#  
+#
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
-#  
-#  
+#
+#
 import sys, time, threading, os, dbus
 import dbus.service
 from dbus.mainloop.qt import DBusQtMainLoop
@@ -32,42 +32,40 @@ MIN_INPUT_LENGTH = 3
 
 
 class Launcher(QtWidgets.QMainWindow):
-	def __init__(self, parent=None):
+	def __init__(self, core, parent=None):
 		super(Launcher, self).__init__(parent)
-		
-		self.core = Core(self)
-		self.core.start()
-		self.liste = []
+
+		self.core = core
 		centralWidget = QtWidgets.QWidget(self)
-		
+
 		self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-		
-		
+
+
 		self.setStyleSheet("background-color: rgba(45, 45, 45, 75%); color: #dedede;")
-		
+
 		self.setCentralWidget(centralWidget)
 		layout = QtWidgets.QVBoxLayout()
 		self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
 		self.inputLine = QtWidgets.QLineEdit(centralWidget)
 		self.inputLine.textChanged.connect(self.inputHandler)
 		self._centerOnScreen()
-		
+
 		self.setFocusProxy(centralWidget)
 		centralWidget.setFocusProxy(self.inputLine)
-		
+
 		self.inputLine.setGeometry(0,0,self.width(),25)
 		self.resultWidget = QtWidgets.QListWidget()
 		self.resultWidget.setStyleSheet("selection-background-color: #d64937;")
 		layout.addWidget(self.inputLine)
 		layout.addWidget(self.resultWidget)
 		centralWidget.setLayout(layout)
-		
+
 	def showEvent(self, event):
 		print("show")
 		self.inputLine.setText("")
 		self.inputLine.setFocus(True)
 		self.inputLine.raise_()
-		
+
 	def inputHandler(self):
 		self.resultWidget.clear()
 		if len(self.inputLine.text()) >= MIN_INPUT_LENGTH:
@@ -75,14 +73,14 @@ class Launcher(QtWidgets.QMainWindow):
 				icon = QtGui.QIcon(entry.icon)
 				item = QtWidgets.QListWidgetItem(icon,entry.name)
 				self.resultWidget.addItem(item)
-			
+
 	def _centerOnScreen (self):
 		'''Centers the window on the screen.'''
 		resolution = QtWidgets.QDesktopWidget().screenGeometry()
 		self.setGeometry(0,0,resolution.width() / 2,resolution.height()/3)
 		self.move((resolution.width() / 2) - (self.frameSize().width() / 2),
 				  (resolution.height() / 2) - (self.frameSize().height() / 2))
-		
+
 	def keyPressEvent(self, e):
 		if e.key() == QtCore.Qt.Key_Escape:
 			if self.inputLine.text() == "":
@@ -111,11 +109,11 @@ class Launcher(QtWidgets.QMainWindow):
 				self.hide()
 				self.core.launchApp(self.resultWidget.currentRow())
 
-	
+
 class DBusTrayMainWindowObject(dbus.service.Object):
 	"""DBus wrapper object for the mainwindow."""
 
-	def __init__(self, mainwindow, bus):
+	def __init__(self, core, bus):
 		"""Creates a new service object. `mainwindow` specifies the window,
 		which is to be exposed through this service object. `bus` is the
 		DBus bus, at which this object is registered."""
@@ -123,38 +121,39 @@ class DBusTrayMainWindowObject(dbus.service.Object):
 		dbus.service.Object.__init__(self, bus,
 									 # the dbus object path
 									 '/org/pygmy/MainWindow')
-		self.mainwindow = mainwindow
+		self.core = core
 
-	
+
 	@dbus.service.method(dbus_interface='org.pygmy.launcher')
 	def show(self):
-		self.mainwindow.show()
-		self.mainwindow.activateWindow()
-		
+		self.window = Launcher(self.core)
+		self.core.gui = self.window
+		self.window.show()
+		self.window.activateWindow()
+
+
 if __name__ == "__main__":
 	bus = dbus.SessionBus(mainloop=DBusGMainLoop())
-	
+
 	try:
 		launcher = bus.get_object("org.pygmy.launcher","/org/pygmy/MainWindow")
-		
+
+
 	except dbus.DBusException:
-		
+		print("launcher not running yet...")
 		# the application is not running, so the service is registered and
 		# the window created
 		name = dbus.service.BusName("org.pygmy.launcher", bus)
 		app = QtWidgets.QApplication(sys.argv)
-		launcher = Launcher()
 		# register the service object for the main window
-		mainwindowobject = DBusTrayMainWindowObject(launcher, bus)
+		core = Core()
+		core.start()
+		mainwindowobject = DBusTrayMainWindowObject(core, bus)
 		# show the window and get the message loop running
-		launcher.show()
+		mainwindowobject.show()
 		app.exec_()
 	else:
 		# the try clause completed, the application must therefore be
 		# running.  Now the mainwindow is shown and activated.
+		print("launcher aready running...")
 		launcher.show()
-		
-		
-		
-		
-	
