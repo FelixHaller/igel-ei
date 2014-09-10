@@ -16,9 +16,11 @@ class Core():
 		self.scanner = []
 		self.results = []
 		self.gui = None
+		
+		currentDir = os.path.dirname(os.path.realpath(__file__))
 
 					
-		plugin_dir = os.path.join("plugins")
+		plugin_dir = currentDir + "/" + "plugins"
 		places = [plugin_dir,]
 		
 		self.manager = PluginManagerSingleton.get()
