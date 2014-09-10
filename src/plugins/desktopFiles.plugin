@@ -1,0 +1,10 @@
+[Core]
+Name = Desktop Files
+Module = desktopFiles
+
+[Documentation]
+Author = Felix Haller
+Version = 0.0.1
+Website = 
+Description = scans specific directories for *.desktop files that contain apps
+

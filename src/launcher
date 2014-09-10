@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+#  launcher.py
+#
+#  Copyright 2014 Felix Haller <ich@ein-freier-mensch.de>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#
+#
+import dbus, sys
+import dbus.service
+from dbus.mainloop.glib import DBusGMainLoop
+from PyQt5 import QtWidgets
+
+from launcher import Launcher
+from core import Core
+
+
+class DBusObject(dbus.service.Object):
+	"""DBus wrapper object for the mainwindow."""
+
+	def __init__(self, core, bus):
+		"""Creates a new service object. `mainwindow` specifies the window,
+		which is to be exposed through this service object. `bus` is the
+		DBus bus, at which this object is registered."""
+		# register this object on the given bus (dbus path)
+		dbus.service.Object.__init__(self, bus, '/org/pygmy/MainWindow')
+		self.core = core
+
+	@dbus.service.method(dbus_interface='org.pygmy.launcher')
+	def wakeup(self):
+		self.window = Launcher(self.core)
+		self.core.gui = self.window
+		self.window.show()
+		self.window.activateWindow()
+
+if __name__ == "__main__":
+	bus = dbus.SessionBus(mainloop=DBusGMainLoop())
+
+	try:
+		launcher = bus.get_object("org.pygmy.launcher", "/org/pygmy/MainWindow")
+
+	except dbus.DBusException:
+		print("launcher not running yet...")
+		# the application is not running, so the service is registered and
+		# the window created
+		name = dbus.service.BusName("org.pygmy.launcher", bus)
+		app = QtWidgets.QApplication(sys.argv)
+		# register the service object for the main window
+		core = Core()
+		mainwindowobject = DBusObject(core, bus)
+		# show the window and get the message loop running
+		mainwindowobject.wakeup()
+		app.exec_()
+	else:
+		# the try clause completed, the application must therefore be
+		# running.  Now the mainwindow is shown and activated.
+		print("launcher aready running...")
+		launcher.wakeup()
