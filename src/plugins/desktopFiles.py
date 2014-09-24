@@ -1,5 +1,8 @@
 import time,os, glob, xdg
+import xdg.DesktopEntry
+import xdg.IconTheme
 from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5 import QtGui
 from yapsy.PluginManager import PluginManagerSingleton
 
 import plugins.plugin as plugin
@@ -53,6 +56,7 @@ class Scanner(QThread):
 		
 		
 	def run(self):
+		Icons()
 		print("scan started....")
 		for path in self.paths:
 			for entry in glob.glob(path+"/*.desktop"):
@@ -76,3 +80,54 @@ class Scanner(QThread):
 	
 	def _getAppFromDesktopFile(self, desktopFile):
 		return(xdg.DesktopEntry.DesktopEntry(desktopFile))
+		
+class Icons():
+	
+	GNOME_SESSIONS=["mate", "unity", "gnome"]
+	'''
+	This class is to deliver an icon for an app because there are some hacks 
+	needed to always deliver an Icon for every app.
+	
+	I'm not sure about that class. If someone knows a better way, please tell me.
+	'''
+	def __init__(self):
+		#self.desktop = self.selectDesktop()
+		
+		if self.isThemeAvailable():
+			print("Juhu")
+		if self.isDesktopGnomish():
+			print("yeah")
+		
+		
+	def isThemeAvailable(self):
+		'''Is there a theme available to use with PyQt'''
+		return (QtGui.QIcon.themeName() != "")
+		
+	
+	def isDesktopGnomish(self):
+		'''
+		Returns if the desktop is gnome or similar to it.
+		'''
+	
+		return True
+		
+		#~ try:
+			#~ from gi.repository import Gtk
+		#~ except ImportError:
+			#~ return False
+		
+		#~ return os.environ.get("DESKTOP_SESSION") in self.GNOME_SESSIONS
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+	

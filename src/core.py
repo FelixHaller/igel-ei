@@ -1,14 +1,26 @@
-import os, glob, subprocess, shlex, re
-import xdg.Menu
-import xdg.DesktopEntry
-import xdg.IconTheme
-import random as r
+import os, subprocess, shlex, re
+import dbus.service
 from PyQt5 import QtCore
-
-#from yapsy.ConfigurablePluginManager import ConfigurablePluginManager
-#from yapsy.VersionedPluginManager import VersionedPluginManager
 from yapsy.PluginManager import PluginManagerSingleton
 
+from launcher import Launcher
+
+
+
+class DBusObject(dbus.service.Object):
+
+	def __init__(self, core):
+		busName = dbus.service.BusName('org.pygmy.launcher', bus = dbus.SessionBus())
+		dbus.service.Object.__init__(self, busName, '/org/pygmy/MainWindow')
+		self.core = core
+		
+	@dbus.service.method(dbus_interface='org.pygmy.launcher')
+	def wakeup(self):
+		print("waking up...")
+		self.window = Launcher(self.core)
+		self.core.gui = self.window
+		self.window.show()
+		self.window.activateWindow()
 
 class Core():
 	def __init__(self):
@@ -16,30 +28,29 @@ class Core():
 		self.scanner = []
 		self.results = []
 		self.gui = None
-		
+
 		currentDir = os.path.dirname(os.path.realpath(__file__))
 
-					
 		plugin_dir = currentDir + "/" + "plugins"
-		places = [plugin_dir,]
-		
+		places = [plugin_dir, ]
+
 		self.manager = PluginManagerSingleton.get()
 
 		self.manager.app = self
 		self.manager.setPluginInfoExtension("plugin")
-		
+
 		# Pass the manager the list of plugin directories
 		self.manager.setPluginPlaces(places)
-		
+
 		# CollectPlugins is a shortcut for locatePlugins() and loadPlugins().
 		self.manager.collectPlugins()
-		
+
 		# let's load all plugins we can find in the plugins directory
 		for plugin in self.manager.getAllPlugins():
 			self.activatePlugin(plugin.name)
-		
+
 		self.scan()
-		
+
 	def activatePlugin(self, pluginname):
 		plugin = self.manager.activatePluginByName(pluginname)
 		

@@ -1,5 +1,4 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
-from core import Core
 
 MIN_INPUT_LENGTH = 3
 
@@ -44,8 +43,7 @@ class Launcher(QtWidgets.QMainWindow):
 	def keyPressEvent(self, e):
 		if e.key() == QtCore.Qt.Key_Escape:
 			if self.inputLine.text() == "":
-				#self.hide()
-				self.close()
+				self.hide()
 			else:
 				self.inputLine.setText("")
 				self.inputLine.setFocus(True)
