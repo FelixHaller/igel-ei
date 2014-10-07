@@ -3,9 +3,9 @@ from PyQt5 import QtGui, QtWidgets, QtCore
 MIN_INPUT_LENGTH = 3
 
 
-class Launcher(QtWidgets.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
 	def __init__(self, core, parent=None):
-		super(Launcher, self).__init__(parent)
+		super().__init__(parent)
 
 		self.core = core
 		centralWidget = QtWidgets.QWidget(self)
@@ -20,6 +20,7 @@ class Launcher(QtWidgets.QMainWindow):
 		self.inputLine = QtWidgets.QLineEdit(centralWidget)
 		self.inputLine.textChanged.connect(self.inputHandler)
 		self._centerOnScreen()
+
 
 		self.setFocusProxy(centralWidget)
 		centralWidget.setFocusProxy(self.inputLine)
@@ -75,4 +76,4 @@ class Launcher(QtWidgets.QMainWindow):
 		self.move((resolution.width() / 2) - (self.frameSize().width() / 2),
 				(resolution.height() / 2) - (self.frameSize().height() / 2))
 
-		
+

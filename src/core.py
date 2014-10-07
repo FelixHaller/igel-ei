@@ -3,30 +3,30 @@ import dbus.service
 from PyQt5 import QtCore
 from yapsy.PluginManager import PluginManagerSingleton
 
-from launcher import Launcher
+import configparser
 
-
+from launcher import MainWindow
 
 class DBusObject(dbus.service.Object):
 
 	def __init__(self, core):
 		busName = dbus.service.BusName('org.pygmy.launcher', bus = dbus.SessionBus())
-		dbus.service.Object.__init__(self, busName, '/org/pygmy/MainWindow')
+		dbus.service.Object.__init__(self, busName, '/MainWindow')
 		self.core = core
 		
 	@dbus.service.method(dbus_interface='org.pygmy.launcher')
 	def wakeup(self):
 		print("waking up...")
-		self.window = Launcher(self.core)
-		self.core.gui = self.window
-		self.window.show()
-		self.window.activateWindow()
+		#if self.core.gui is None:
+		self.core.gui = MainWindow(self.core)
+		self.core.gui.show()
+		self.core.gui.activateWindow()
+		self.core.scan()
 
 class Core():
 	def __init__(self):
 		self.allApps = {}
 		self.scanner = []
-		self.results = []
 		self.gui = None
 
 		currentDir = os.path.dirname(os.path.realpath(__file__))
@@ -48,7 +48,11 @@ class Core():
 		# let's load all plugins we can find in the plugins directory
 		for plugin in self.manager.getAllPlugins():
 			self.activatePlugin(plugin.name)
-
+			try:
+				print(plugin.details.get("Documentation", "requires"))
+			except configparser.NoOptionError:
+				pass
+			
 		self.scan()
 
 	def activatePlugin(self, pluginname):
@@ -111,5 +115,6 @@ class Command(QtCore.QThread):
 		commandWithArgs = self._parse()
 		p = subprocess.Popen(commandWithArgs)
 		p.wait()
+		print("App wurde beendet")
 		self.quit()
 

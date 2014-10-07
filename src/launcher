@@ -30,8 +30,8 @@ if __name__ == "__main__":
 	try:
 		bus_loop = DBusQtMainLoop(set_as_default=True)
 		bus = dbus.SessionBus(bus_loop)
-		launcher = bus.get_object("org.pygmy.launcher", "/org/pygmy/MainWindow")
-		launcher.wakeup()
+		mainWindow = bus.get_object("org.pygmy.launcher", "/MainWindow")
+		mainWindow.wakeup()
 	except:
 		import sys
 		from PyQt5 import QtWidgets
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 		print("launcher not running yet...")
 		app = QtWidgets.QApplication(sys.argv)
 		core = Core()
-		launcher = DBusObject(core)
-		launcher.wakeup()
+		mainWindow = DBusObject(core)
+		mainWindow.wakeup()
 		app.exec_()
 		

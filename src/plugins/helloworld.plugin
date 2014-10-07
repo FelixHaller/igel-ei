@@ -7,4 +7,5 @@ Author = Felix Haller
 Version = 0.0.1
 Website = 
 Description = prints "Hello World on the console output, when it's loaded."
+Requires = Test
 
