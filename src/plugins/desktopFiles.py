@@ -53,13 +53,14 @@ class Scanner(QThread):
 		
 	
 	def setScanTargets(self):
-		paths=(	"/usr/share/applications/",
-				"~/.local/share/applications/",
-				"~/Desktop/"
-				)
+		pathsRec = ("/usr/share/applications/","~/.local/share/applications/") # recursive scanning paths
+		paths = ("~/Desktop/",)
+		
+		for path in pathsRec:
+			for p,d,f in os.walk(os.path.expanduser(path)):
+				self.paths.append(p)
 		for path in paths:
-			for subDir in os.walk(path):
-				self.paths.append(os.path.expanduser(subDir[0]))
+			self.paths.append(os.path.expanduser(path))
 		
 	def run(self):
 		
